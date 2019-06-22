@@ -74,20 +74,26 @@ BudgetFormSet = forms.formset_factory(BudgetForm, extra=0)
 
 
 class TransactionForm(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request')
+        super(TransactionForm, self).__init__(*args, **kwargs)
+
     class Meta:
         model = models.Transaction
-        fields = ['title', 'source_account', 'destination_account',
-                  'amount', 'date', 'value_date', 'category', 'notes']
+        fields = ['title', 'amount', 'date', 'category']
 
     amount = forms.DecimalField(max_digits=10, decimal_places=2, min_value=0.01)
-    category = forms.ModelChoiceField(
-        queryset=models.Category.objects.exclude(active=False).order_by('name'), required=False)
-    value_date = forms.DateField(required=False)
 
-    source_account = forms.ModelChoiceField(queryset=models.Account.objects.filter(
-        account_type=models.Account.PERSONAL, active=True))
-    destination_account = forms.ModelChoiceField(queryset=models.Account.objects.filter(
-        account_type=models.Account.PERSONAL, active=True))
+    # Get current users categories only
+    category = forms.ModelChoiceField(
+        queryset=models.Category.objects.exclude(active=False).order_by('name'),
+        required=False
+    )
+
+#    value_date = forms.DateField(required=False)
+#    source_account = forms.ModelChoiceField(queryset=models.Account.objects.filter(account_type=models.Account.PERSONAL, active=True))
+#    destination_account = forms.ModelChoiceField(queryset=models.Account.objects.filter(account_type=models.Account.PERSONAL, active=True))
 
     def save(self, commit=True):
         transaction = super().save(commit)
@@ -140,14 +146,24 @@ class TransferForm(TransactionForm):
 
 
 class WithdrawForm(TransactionForm):
-    destination_account = forms.CharField(max_length=64, label=_('Debitor'),
-                                          widget=forms.TextInput(attrs={'autocomplete': 'off'}))
+#    destination_account = forms.CharField(max_length=64, label=_('Debitor'), widget=forms.TextInput(attrs={'autocomplete': 'off'}))
 
     def save(self, commit=True):
-        account, _ = models.Account.objects.get_or_create(
-            name=self.cleaned_data['destination_account'],
-            account_type=models.Account.FOREIGN)
-        self.cleaned_data['destination_account'] = account
+        destination_account, _ = models.Account.objects.get_or_create(
+            name='Debit',
+            account_type=models.Account.FOREIGN,
+            user=self.request.user,
+            )
+
+        source_account, _ = models.Account.objects.get_or_create(
+            name='default',
+            account_type=models.Account.PERSONAL,
+            user=self.request.user,
+            active=True,
+            )
+
+        self.cleaned_data['destination_account'] = destination_account
+        self.cleaned_data['source_account'] = source_account  
         return super().save(commit)
 
     def clean(self):
@@ -156,13 +172,24 @@ class WithdrawForm(TransactionForm):
 
 
 class DepositForm(TransactionForm):
-    source_account = forms.CharField(max_length=64, label=_('Creditor'),
-                                     widget=forms.TextInput(attrs={'autocomplete': 'off'}))
+#    source_account = forms.CharField(max_length=64, label=_('Creditor'), widget=forms.TextInput(attrs={'autocomplete': 'off'}))
 
     def save(self, commit=True):
-        account, _ = models.Account.objects.get_or_create(name=self.cleaned_data['source_account'],
-                                                          account_type=models.Account.FOREIGN)
-        self.cleaned_data['source_account'] = account
+        source_account, _ = models.Account.objects.get_or_create(
+            name='Credit',
+            account_type=models.Account.FOREIGN,
+            user=self.request.user
+        )
+
+        destination_account, _ = models.Account.objects.get_or_create(
+            name='default',
+            account_type=models.Account.PERSONAL,
+            user=self.request.user,
+            active=True,
+        )
+
+        self.cleaned_data['source_account'] = source_account
+        self.cleaned_data['destination_account'] = destination_account
         return super().save(commit)
 
     def clean(self):

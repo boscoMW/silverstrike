@@ -38,14 +38,12 @@ urlpatterns = [
          transaction_views.SplitUpdate.as_view(), name='split_update'),
     path('transactions/<int:pk>/delete/',
          transaction_views.TransactionDeleteView.as_view(), name='transaction_delete'),
-    path('transactions/create/transfer/',
-         transaction_views.TransactionCreate.as_view(), {'type': 'transfer'}, name='transfer_new'),
-    path('transactions/create/withdraw/',
-         transaction_views.TransactionCreate.as_view(), {'type': 'withdraw'}, name='withdraw_new'),
-    path('transactions/create/deposit/',
-         transaction_views.TransactionCreate.as_view(), {'type': 'deposit'}, name='deposit_new'),
-    path('transactions/create/split/',
-         transaction_views.SplitCreate.as_view(), name='split_create'),
+
+    path('transactions/create/withdraw/', transaction_views.TransactionCreate.as_view(), {'type': 'withdraw'}, name='withdraw_new'),
+    path('transactions/create/deposit/', transaction_views.TransactionCreate.as_view(), {'type': 'deposit'}, name='deposit_new'),
+
+    #path('transactions/create/transfer/',transaction_views.TransactionCreate.as_view(), {'type': 'transfer'}, name='transfer_new'),
+    #path('transactions/create/split/', transaction_views.SplitCreate.as_view(), name='split_create'),
 
     path('accounts/<int:pk>/update/',
          account_views.AccountUpdate.as_view(), name='account_update'),

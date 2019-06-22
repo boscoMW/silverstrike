@@ -14,11 +14,12 @@ class IndexView(LoginRequiredMixin, generic.TemplateView):
     template_name = 'silverstrike/index.html'
 
     def get_context_data(self, **kwargs):
+        user_id = self.request.user.id
         dstart = date.today().replace(day=1)
         dend = last_day_of_month(dstart)
         context = super().get_context_data(**kwargs)
         context['menu'] = 'home'
-        queryset = Split.objects.personal().past()
+        queryset = Split.objects.personal(user_id).past()
         context['balance'] = queryset.aggregate(
             models.Sum('amount'))['amount__sum'] or 0
         queryset = queryset.date_range(dstart, dend)
@@ -28,13 +29,13 @@ class IndexView(LoginRequiredMixin, generic.TemplateView):
                 models.Sum('amount'))['amount__sum'] or 0)
         context['difference'] = context['income'] - context['expenses']
 
-        context['accounts'] = Account.objects.personal().shown_on_dashboard()
-        upcoming = Split.objects.personal().upcoming().transfers_once()
+        context['accounts'] = Account.objects.personal().filter(user__id=user_id).shown_on_dashboard()
+        upcoming = Split.objects.personal(user_id).upcoming().transfers_once(user_id)
         recurrences = RecurringTransaction.objects.due_in_month()
 
         context['upcoming_transactions'] = upcoming
         context['upcoming_recurrences'] = recurrences
-        context['transactions'] = Split.objects.personal().transfers_once().past().select_related(
+        context['transactions'] = Split.objects.personal(user_id).transfers_once(user_id).past().select_related(
             'account', 'opposing_account', 'category', 'transaction')[:10]
         outstanding = 0
         for t in upcoming:
@@ -56,7 +57,7 @@ class IndexView(LoginRequiredMixin, generic.TemplateView):
         # last month
         previous_last = dstart - timedelta(days=1)
         previous_first = previous_last.replace(day=1)
-        queryset = Split.objects.personal().date_range(previous_first, previous_last)
+        queryset = Split.objects.personal(user_id).date_range(previous_first, previous_last)
         context['previous_income'] = abs(queryset.income().aggregate(
             models.Sum('amount'))['amount__sum'] or 0)
 

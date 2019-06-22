@@ -45,9 +45,9 @@ def get_account_balance(request, account_id, dstart, dend):
 def get_balances(request, dstart, dend):
     dstart = datetime.datetime.strptime(dstart, '%Y-%m-%d').date()
     dend = datetime.datetime.strptime(dend, '%Y-%m-%d').date()
-    balance = Split.objects.personal().exclude_transfers().filter(date__lt=dstart).aggregate(
+    balance = Split.objects.personal(request.user.id).exclude_transfers().filter(date__lt=dstart).aggregate(
             models.Sum('amount'))['amount__sum'] or 0
-    splits = Split.objects.personal().exclude_transfers().date_range(dstart, dend).order_by('date')
+    splits = Split.objects.personal(request.user.id).exclude_transfers().date_range(dstart, dend).order_by('date')
     data_points = []
     labels = []
     days = (dend - dstart).days

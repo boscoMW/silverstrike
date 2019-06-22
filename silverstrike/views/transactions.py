@@ -71,6 +71,11 @@ class TransactionCreate(LoginRequiredMixin, generic.edit.CreateView):
         else:
             return DepositForm
 
+    def get_form_kwargs(self):
+        kwargs = super(TransactionCreate, self).get_form_kwargs()
+        kwargs['request'] = self.request
+        return kwargs
+
     def get_context_data(self, **kwargs):
         context = super(TransactionCreate, self).get_context_data(**kwargs)
         context['menu'] = 'transactions'

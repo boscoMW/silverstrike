@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 from django.db import models
 from django.urls import reverse
 from django.utils.translation import ugettext as _
-
+from django.contrib.auth.models import User
 
 class AccountQuerySet(models.QuerySet):
     def personal(self):
@@ -35,6 +35,7 @@ class Account(models.Model):
         (SYSTEM, _('System')),
     )
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default=1)
     name = models.CharField(max_length=64)
     account_type = models.IntegerField(choices=ACCOUNT_TYPES, default=PERSONAL)
     active = models.BooleanField(default=True)
@@ -46,7 +47,7 @@ class Account(models.Model):
 
     class Meta:
         ordering = ['-active', 'name']
-        unique_together = (('name', 'account_type'),)
+        unique_together = (('name', 'account_type', 'user'),)
 
     def __str__(self):
         return self.name
@@ -129,6 +130,7 @@ class Transaction(models.Model):
     class Meta:
         ordering = ['-date', 'title']
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default=1)
     title = models.CharField(max_length=64)
     date = models.DateField(default=date.today)
     notes = models.TextField(blank=True, null=True)
@@ -180,8 +182,8 @@ class Transaction(models.Model):
 
 
 class SplitQuerySet(models.QuerySet):
-    def personal(self):
-        return self.filter(account__account_type=Account.PERSONAL)
+    def personal(self, user_id):
+        return self.filter(account__account_type=Account.PERSONAL, account__user__id=user_id)
 
     def income(self):
         return self.filter(opposing_account__account_type=Account.FOREIGN, amount__gt=0)
@@ -195,8 +197,8 @@ class SplitQuerySet(models.QuerySet):
     def category(self, category):
         return self.filter(category=category)
 
-    def transfers_once(self):
-        return self.personal().exclude(opposing_account__account_type=Account.PERSONAL,
+    def transfers_once(self, user_id):
+        return self.personal(user_id).exclude(opposing_account__account_type=Account.PERSONAL,
                                        amount__gte=0)
 
     def exclude_transfers(self):
@@ -255,6 +257,7 @@ class Split(models.Model):
 
 
 class Category(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default=1)  
     name = models.CharField(max_length=64)
     active = models.BooleanField(default=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -342,6 +345,7 @@ class RecurringTransaction(models.Model):
 
     objects = RecurringTransactionManager()
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default=1)
     title = models.CharField(max_length=64)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     usual_month_day = models.PositiveIntegerField(default=0)
